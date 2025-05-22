@@ -15,11 +15,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from scrapers import (
-    MwananchiScraper,
-    HabariLeoScraper,
-    IPPMediaScraper,
-    BBCSwahiliScraper,
-    VOASwahiliScraper
+    MwananchiScraper
+    # HabariLeoScraper,
+    # IPPMediaScraper,
+    # BBCSwahiliScraper,
+    # VOASwahiliScraper
 )
 
 # Configure logging
@@ -72,10 +72,10 @@ class DatasetCreator:
     def __init__(self):
         self.scrapers = [
             MwananchiScraper('https://www.mwananchi.co.tz'),
-            HabariLeoScraper('https://www.habarileo.co.tz'),
-            IPPMediaScraper('https://www.ippmedia.com/nipashe'),
-            BBCSwahiliScraper('https://www.bbc.com/swahili'),
-            VOASwahiliScraper('https://www.voaswahili.com')
+            # HabariLeoScraper('https://www.habarileo.co.tz'),
+            # IPPMediaScraper('https://www.ippmedia.com/nipashe'),
+            # BBCSwahiliScraper('https://www.bbc.com/swahili'),
+            # VOASwahiliScraper('https://www.voaswahili.com')
         ]
         self.articles = []
         self.vectorizer = TfidfVectorizer()
