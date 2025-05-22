@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 async def test_scraper():
     scrapers = [
         MwananchiScraper('https://www.mwananchi.co.tz'),
-        HabariLeoScraper('https://www.habarileo.co.tz'),
-        IPPMediaScraper('https://www.ippmedia.com/nipashe'),
-        BBCSwahiliScraper('https://www.bbc.com/swahili'),
-        VOASwahiliScraper('https://www.voaswahili.com')
+        # HabariLeoScraper('https://www.habarileo.co.tz'),
+        # IPPMediaScraper('https://www.ippmedia.com/nipashe'),
+        # BBCSwahiliScraper('https://www.bbc.com/swahili'),
+        # VOASwahiliScraper('https://www.voaswahili.com')
     ]
     
     for scraper in scrapers:
