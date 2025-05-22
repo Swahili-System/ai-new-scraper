@@ -1,47 +1,43 @@
 from typing import List
 from bs4 import BeautifulSoup
-import re
 
 from .base import BaseScraper
-
-def remove_byline(text):
-    # Remove English or Swahili bylines at the start of the text
-    return re.sub(
-        r'^(By|BY|Na|NA) [A-Za-z\s\-]+(Mwandishi wa Habari Mwananchi)?[\s\-A-Za-z]*[\.,\-]*\s*',
-        '',
-        text,
-        flags=re.IGNORECASE
-    ).strip()
 
 class MwananchiScraper(BaseScraper):
     async def get_article_links(self) -> List[str]:
         """Get article links from Mwananchi homepage and category pages."""
         links = set()
         
-        # Try homepage
-        html = await self.get_page(self.base_url)
-        if html:
-            soup = BeautifulSoup(html, 'html.parser')
-            # Look for article links in various containers
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                if any(pattern in href.lower() for pattern in ['/habari/', '/taifa/', '/makala/']):
-                    full_url = self.normalize_url(href)
-                    if full_url:
-                        links.add(full_url)
+        # Define sections to scrape
+        sections = [
+            '/habari/',  # General news
+            '/taifa/',   # National
+            '/makala/',  # Articles
+            '/mw/habari/biashara',  # Business
+            '/mw/habari/kimataifa', # International
+            '/mw/habari/kitaifa'    # National
+        ]
+        section_roots = [
+            '/habari/', '/taifa/', '/makala/',
+            '/mw/habari/biashara', '/mw/habari/kimataifa', '/mw/habari/kitaifa'
+        ]
         
-        # Try category pages
-        categories = ['/habari/', '/taifa/', '/makala/']
-        for category in categories:
-            url = self.normalize_url(category)
+        for section in sections:
+            url = self.normalize_url(section)
             html = await self.get_page(url)
             if html:
                 soup = BeautifulSoup(html, 'html.parser')
                 for a in soup.find_all('a', href=True):
                     href = a['href']
-                    if any(pattern in href.lower() for pattern in ['/habari/', '/taifa/', '/makala/']):
-                        full_url = self.normalize_url(href)
-                        if full_url:
+                    # Normalize and check if it's a valid article link
+                    full_url = self.normalize_url(href)
+                    # Exclude media files
+                    if href.endswith(('.jpg', '.png', '.gif', '.mp4', '.pdf')):
+                        continue
+                    # Must match one of the news section patterns
+                    if any(pattern in href for pattern in section_roots):
+                        # Exclude root category pages (must be longer than just the section root)
+                        if not any(href.rstrip('/').endswith(root.rstrip('/')) and len(href.rstrip('/')) == len(root.rstrip('/')) for root in section_roots):
                             links.add(full_url)
         
         return list(links)
@@ -82,7 +78,14 @@ class MwananchiScraper(BaseScraper):
             # Try finding text in other elements
             paragraphs = article.find_all(['div', 'span'], class_=lambda x: x and ('content' in x.lower() or 'text' in x.lower()))
         
-        text = ' '.join(p.get_text() for p in paragraphs if p.get_text().strip())
+        # Filter out short paragraphs and ads
+        filtered_paragraphs = []
+        for p in paragraphs:
+            text = p.get_text().strip()
+            if text and len(text) > 50 and not any(x in text.lower() for x in ['advertisement', 'sponsored', 'click here', 'copyright']):
+                filtered_paragraphs.append(text)
+        
+        text = ' '.join(filtered_paragraphs)
         return self.clean_text(text)
 
     async def extract_article(self, url: str) -> dict:
@@ -94,7 +97,8 @@ class MwananchiScraper(BaseScraper):
         # Headline
         headline_tag = soup.find('h1')
         headline = headline_tag.get_text(strip=True) if headline_tag else ""
-        # Main text (reuse your existing logic)
+        
+        # Main text
         article = None
         selectors = [
             'div.article-content',
@@ -113,14 +117,34 @@ class MwananchiScraper(BaseScraper):
         if not article:
             self.debug_html(html)
             return None
+            
         paragraphs = article.find_all('p')
         if not paragraphs:
             paragraphs = article.find_all(['div', 'span'], class_=lambda x: x and ('content' in x.lower() or 'text' in x.lower()))
-        text = ' '.join(p.get_text() for p in paragraphs if p.get_text().strip())
+            
+        # Filter out short paragraphs and ads
+        filtered_paragraphs = []
+        for p in paragraphs:
+            text = p.get_text().strip()
+            if text and len(text) > 50 and not any(x in text.lower() for x in ['advertisement', 'sponsored', 'click here', 'copyright']):
+                filtered_paragraphs.append(text)
+                
+        text = ' '.join(filtered_paragraphs)
         text = self.clean_text(text)
-        text = remove_byline(text)
-        # Label (optional, e.g., use 'news' or extract from URL/section)
+        
+        # Only return if we have substantial content
+        if len(text.split()) < 50:  # Require at least 50 words
+            return None
+            
+        # Label based on URL
         label = "news"
+        if '/biashara/' in url:
+            label = "business"
+        elif '/kimataifa/' in url:
+            label = "international"
+        elif '/kitaifa/' in url:
+            label = "national"
+            
         # Headline + text
         headline_text = f"{headline} {text}"
         return {
