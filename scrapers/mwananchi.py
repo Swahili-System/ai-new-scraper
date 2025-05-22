@@ -145,6 +145,25 @@ class MwananchiScraper(BaseScraper):
         elif '/kitaifa/' in url:
             label = "national"
             
+        # Add comma after location names if they exist
+        common_locations = [
+            "Dar es Salaam", "Dodoma", "Arusha", "Mwanza", "Mbeya", "Tanga",
+            "Morogoro", "Zanzibar", "Mtwara", "Kigoma", "Tabora", "Moshi"
+        ]
+        
+        words = text.split()
+        for i in range(len(words) - 1):
+            # Check for location names (up to 3 words)
+            for loc_len in range(1, 4):
+                if i + loc_len <= len(words):
+                    potential_loc = ' '.join(words[i:i+loc_len])
+                    if potential_loc in common_locations:
+                        # Add comma after the location if it's not already there
+                        if i + loc_len < len(words) and not words[i+loc_len].startswith(','):
+                            words[i+loc_len] = ',' + words[i+loc_len]
+        
+        text = ' '.join(words)
+            
         # Headline + text
         headline_text = f"{headline} {text}"
         return {

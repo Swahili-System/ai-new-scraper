@@ -79,6 +79,9 @@ class DatasetCreator:
         ]
         self.articles = []
         self.vectorizer = TfidfVectorizer()
+        # Create dataset directory if it doesn't exist
+        self.dataset_dir = Path("dataset")
+        self.dataset_dir.mkdir(exist_ok=True)
 
     async def collect_articles(self):
         for scraper in tqdm(self.scrapers, desc="Scrapers"):  # Progress bar for scrapers
@@ -89,6 +92,8 @@ class DatasetCreator:
                     if hasattr(scraper, 'extract_article'):
                         article_data = await scraper.extract_article(link)
                         if article_data and article_data["text"] and len(article_data["text"].split()) >= 20 and scraper.is_swahili(article_data["text"]):
+                            # Add timestamp to article data
+                            article_data["timestamp"] = datetime.now().isoformat()
                             self.articles.append(article_data)
                     else:
                         text = await scraper.extract_article_text(link)
@@ -98,7 +103,8 @@ class DatasetCreator:
                                 "headline": "",
                                 "text": text,
                                 "headline_text": text,
-                                "url": link
+                                "url": link,
+                                "timestamp": datetime.now().isoformat()
                             })
             except Exception as e:
                 logger.error(f"Error processing {scraper.base_url}: {str(e)}")
@@ -133,12 +139,23 @@ class DatasetCreator:
         
         self.articles = unique_articles
 
-    def save_dataset(self, output_path: str = "dataset/swahili_news.jsonl"):
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    def save_dataset(self):
+        """Save articles to a timestamped JSON file."""
+        if not self.articles:
+            logger.warning("No articles to save!")
+            return
+
+        # Generate timestamp for filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = self.dataset_dir / f"swahili_news_{timestamp}.jsonl"
+        
+        # Save articles
         with open(output_path, 'w', encoding='utf-8') as f:
             for article in self.articles:
                 json.dump(article, f, ensure_ascii=False)
                 f.write('\n')
+        
+        logger.info(f"Saved {len(self.articles)} articles to {output_path}")
 
 async def main():
     creator = DatasetCreator()
