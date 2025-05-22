@@ -47,6 +47,8 @@ class MwananchiScraper(BaseScraper):
         # Try different article content selectors
         article = None
         selectors = [
+            'div.article-content',
+            'section.text-block.blk-txt',
             'section.page-content_mcl.detail-e-content',
             'article',
             'div.article-content',
