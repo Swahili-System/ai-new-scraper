@@ -81,13 +81,25 @@ class DatasetCreator:
         self.vectorizer = TfidfVectorizer()
 
     async def collect_articles(self):
-        for scraper in self.scrapers:
+        for scraper in tqdm(self.scrapers, desc="Scrapers"):  # Progress bar for scrapers
             try:
                 links = await scraper.get_article_links()
-                for link in tqdm(links, desc=f"Processing {scraper.base_url}"):
-                    text = await scraper.extract_article_text(link)
-                    if text and len(text.split()) >= 20 and scraper.is_swahili(text):
-                        self.articles.append(text)
+                for link in tqdm(links, desc=f"Articles from {scraper.base_url}"):
+                    # Use extract_article for MwananchiScraper
+                    if hasattr(scraper, 'extract_article'):
+                        article_data = await scraper.extract_article(link)
+                        if article_data and article_data["text"] and len(article_data["text"].split()) >= 20 and scraper.is_swahili(article_data["text"]):
+                            self.articles.append(article_data)
+                    else:
+                        text = await scraper.extract_article_text(link)
+                        if text and len(text.split()) >= 20 and scraper.is_swahili(text):
+                            self.articles.append({
+                                "label": "news",
+                                "headline": "",
+                                "text": text,
+                                "headline_text": text,
+                                "url": link
+                            })
             except Exception as e:
                 logger.error(f"Error processing {scraper.base_url}: {str(e)}")
             finally:
@@ -98,7 +110,7 @@ class DatasetCreator:
             return
 
         # Convert articles to TF-IDF vectors
-        tfidf_matrix = self.vectorizer.fit_transform(self.articles)
+        tfidf_matrix = self.vectorizer.fit_transform([a["text"] for a in self.articles])
         
         # Calculate cosine similarity
         similarity_matrix = cosine_similarity(tfidf_matrix)
@@ -123,10 +135,9 @@ class DatasetCreator:
 
     def save_dataset(self, output_path: str = "dataset/swahili_news.jsonl"):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
         with open(output_path, 'w', encoding='utf-8') as f:
             for article in self.articles:
-                json.dump({"text": article}, f, ensure_ascii=False)
+                json.dump(article, f, ensure_ascii=False)
                 f.write('\n')
 
 async def main():

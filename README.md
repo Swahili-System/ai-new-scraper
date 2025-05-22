@@ -44,7 +44,5 @@ The output dataset will be saved as `dataset/swahili_news.jsonl` with the follow
 
 - Mwananchi (https://www.mwananchi.co.tz)
 - Habari Leo (https://www.habarileo.co.tz)
-- IPP Media (https://www.ippmedia.com)
-- BBC Swahili (https://www.bbc.com/swahili)
-- VOA Swahili (https://www.voaswahili.com)
+
 

@@ -73,4 +73,49 @@ class MwananchiScraper(BaseScraper):
             paragraphs = article.find_all(['div', 'span'], class_=lambda x: x and ('content' in x.lower() or 'text' in x.lower()))
         
         text = ' '.join(p.get_text() for p in paragraphs if p.get_text().strip())
-        return self.clean_text(text) 
+        return self.clean_text(text)
+
+    async def extract_article(self, url: str) -> dict:
+        html = await self.get_page(url)
+        if not html:
+            return None
+
+        soup = BeautifulSoup(html, 'html.parser')
+        # Headline
+        headline_tag = soup.find('h1')
+        headline = headline_tag.get_text(strip=True) if headline_tag else ""
+        # Main text (reuse your existing logic)
+        article = None
+        selectors = [
+            'div.article-content',
+            'section.text-block.blk-txt',
+            'section.page-content_mcl.detail-e-content',
+            'article',
+            'div.article-content',
+            'div.story-body',
+            'div.content-area',
+            'div.entry-content'
+        ]
+        for selector in selectors:
+            article = soup.select_one(selector)
+            if article:
+                break
+        if not article:
+            self.debug_html(html)
+            return None
+        paragraphs = article.find_all('p')
+        if not paragraphs:
+            paragraphs = article.find_all(['div', 'span'], class_=lambda x: x and ('content' in x.lower() or 'text' in x.lower()))
+        text = ' '.join(p.get_text() for p in paragraphs if p.get_text().strip())
+        text = self.clean_text(text)
+        # Label (optional, e.g., use 'news' or extract from URL/section)
+        label = "news"
+        # Headline + text
+        headline_text = f"{headline} {text}"
+        return {
+            "label": label,
+            "headline": headline,
+            "text": text,
+            "headline_text": headline_text,
+            "url": url
+        } 
