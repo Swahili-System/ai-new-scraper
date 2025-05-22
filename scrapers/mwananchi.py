@@ -1,7 +1,17 @@
 from typing import List
 from bs4 import BeautifulSoup
+import re
 
 from .base import BaseScraper
+
+def remove_byline(text):
+    # Remove English or Swahili bylines at the start of the text
+    return re.sub(
+        r'^(By|BY|Na|NA) [A-Za-z\s\-]+(Mwandishi wa Habari Mwananchi)?[\s\-A-Za-z]*[\.,\-]*\s*',
+        '',
+        text,
+        flags=re.IGNORECASE
+    ).strip()
 
 class MwananchiScraper(BaseScraper):
     async def get_article_links(self) -> List[str]:
@@ -108,6 +118,7 @@ class MwananchiScraper(BaseScraper):
             paragraphs = article.find_all(['div', 'span'], class_=lambda x: x and ('content' in x.lower() or 'text' in x.lower()))
         text = ' '.join(p.get_text() for p in paragraphs if p.get_text().strip())
         text = self.clean_text(text)
+        text = remove_byline(text)
         # Label (optional, e.g., use 'news' or extract from URL/section)
         label = "news"
         # Headline + text
